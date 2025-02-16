@@ -66,6 +66,46 @@ app.get("/api/bookings", (req, res) => {
   }
 });
 
+app.get("/admin", (req, res) => {
+  res.sendFile(__dirname + "/dist/pages/admin.html"); // Отобразим админ-панель
+});
+// Обновить статус заявки
+app.put("/api/bookings/:date", (req, res) => {
+  const filePath =
+    process.env.NODE_ENV === "production"
+      ? "/tmp/bookings.json"
+      : "bookings.json";
+  try {
+    let bookings = JSON.parse(fs.readFileSync(filePath));
+    const index = bookings.findIndex((b) => b.date === req.params.date);
+    if (index !== -1) {
+      bookings[index].status = req.body.status;
+      fs.writeFileSync(filePath, JSON.stringify(bookings, null, 2));
+      res.status(200).json({ success: true });
+    } else {
+      res.status(404).json({ success: false, message: "Заявка не найдена" });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false });
+  }
+});
+
+// Удалить заявку
+app.delete("/api/bookings/:date", (req, res) => {
+  const filePath =
+    process.env.NODE_ENV === "production"
+      ? "/tmp/bookings.json"
+      : "bookings.json";
+  try {
+    let bookings = JSON.parse(fs.readFileSync(filePath));
+    bookings = bookings.filter((b) => b.date !== req.params.date);
+    fs.writeFileSync(filePath, JSON.stringify(bookings, null, 2));
+    res.status(200).json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Сервер запущен на http://localhost:${PORT}`);
 });
