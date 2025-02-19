@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const fs = require("fs");
+const nodemailer = require("nodemailer");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -10,8 +11,43 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(bodyParser.json());
 
+const sendEmail = async (newBooking) => {
+  const transporter = nodemailer.createTransport({
+    host: "smtp.mail.ru",
+    port: 465,
+    secure: true,
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+
+  const mailOptions = {
+    from: `"Tranquility Spa" <${process.env.EMAIL_USER}>`,
+    to: process.env.ADMIN_EMAIL,
+    subject: "Новая заявка на массаж",
+    html: `
+      <h2>Новая заявка от клиента</h2>
+      <p><strong>Имя:</strong> ${newBooking.name}</p>
+      <p><strong>Телефон:</strong> ${newBooking.phone}</p>
+      <p><strong>Услуга:</strong> ${newBooking.service}</p>
+      <p><strong>Сообщение:</strong> ${newBooking.message || "—"}</p>
+      <p><strong>Дата:</strong> ${new Date(
+        newBooking.date
+      ).toLocaleString()}</p>
+    `,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log("Email отправлен админу.");
+  } catch (error) {
+    console.error("Ошибка отправки email:", error);
+  }
+};
+
 // API маршрут для формы
-app.post("/api/contact", (req, res) => {
+app.post("/api/contact", async (req, res) => {
   const { name, phone, service, message } = req.body;
 
   const phonePattern = /^[+]?[0-9]{10,15}$/;
@@ -40,6 +76,9 @@ app.post("/api/contact", (req, res) => {
     }
     bookings.push(newBooking);
     fs.writeFileSync(filePath, JSON.stringify(bookings, null, 2));
+
+    await sendEmail(newBooking); // Отправка email админу
+
     res.status(200).json({ success: true, message: "Заявка принята!" });
   } catch (err) {
     console.error("Ошибка при записи в файл", err);
@@ -69,6 +108,7 @@ app.get("/api/bookings", (req, res) => {
 app.get("/admin", (req, res) => {
   res.sendFile(__dirname + "/dist/pages/admin.html"); // Отобразим админ-панель
 });
+
 // Обновить статус заявки
 app.put("/api/bookings/:date", (req, res) => {
   const filePath =
