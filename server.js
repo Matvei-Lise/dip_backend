@@ -23,7 +23,7 @@ const sendEmail = async (newBooking) => {
   });
 
   const mailOptions = {
-    from: `"Tranquility Spa" <${process.env.EMAIL_USER}>`,
+    from: `"Территория красивого тела" <${process.env.EMAIL_USER}>`,
     to: process.env.ADMIN_EMAIL,
     subject: "Новая заявка на массаж",
     html: `
